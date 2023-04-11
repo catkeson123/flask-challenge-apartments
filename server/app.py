@@ -37,22 +37,34 @@ api.add_resource(Home, '/')
 class Apartments(Resource):
 
     def get(self):
+
         response_dict_list = [a.to_dict() for a in Apartment.query.all()]
 
-        response = make_response(response_dict_list, 200)
-
+        # status code messages 
+        if response_dict_list:
+            response = make_response(response_dict_list, 200)
+        
+        else:
+            response = make_response( {"error": "no apartments found"}, 404)
+        
         return response
 
     def post(self):
         
-        new_apartment = Apartment( number = request.form['number'])
+        # status code messages 
+        try:
+            new_apartment = Apartment( number = request.form['number'])
 
-        db.session.add(new_apartment)
-        db.session.commit()
+            db.session.add(new_apartment)
+            db.session.commit()
 
-        response_dict = new_apartment.to_dict()
+            response_dict = new_apartment.to_dict()
 
-        response = make_response(response_dict, 201)
+            response = make_response(response_dict, 201)
+        
+        except: 
+            response = make_response( { 'error': 'could not create apartment, must be a number'}, 400)
+
 
         return response
 
@@ -61,21 +73,36 @@ api.add_resource(Apartments, '/apartments')
 class ApartmentByID(Resource):
 
     def get(self, id):
-        response_dict = Apartment.query.filter_by(id = id).first().to_dict()
 
-        response = make_response(response_dict, 200)
+         
+        apt = Apartment.query.filter_by(id = id).first()
+
+        # status code messages 
+        if apt:
+            response_dict = apt.to_dict()
+            response = make_response(response_dict, 200)
+        else:
+            response = make_response( {"error": "no apartment found"}, 404)
 
         return response
 
     def patch(self, id):
         apt = Apartment.query.filter(Apartment.id == id).first()
-
-        for attr in request.form:
-            setattr(apt, attr, request.form[attr])
         
-        db.session.add(apt)
-        db.session.commit()
-
+        # status code messages 
+        if apt:
+            for attr in request.form:
+                setattr(apt, attr, request.form[attr])
+        else:
+            response = make_response( {"error": "no apartment found"}, 404)
+        
+        try:
+            db.session.add(apt)
+            db.session.commit()
+        except:
+            db.session.rollback()
+            return make_response( {'error': 'failed to update apartment'}, 400 )
+ 
         response_dict = apt.to_dict()
 
         response = make_response(response_dict, 200)
@@ -86,12 +113,17 @@ class ApartmentByID(Resource):
         
         apt = Apartment.query.filter_by(id = id).first()
 
-        db.session.delete(apt)
-        db.session.commit()
+        if apt:
+            db.session.delete(apt)
+            db.session.commit()
 
-        response_dict = {"message": "Apartment successfully deleted"}
+            response_dict = {"message": "Apartment successfully deleted"}
 
-        response = make_response(response_dict, 200)
+            response = make_response(response_dict, 200)
+
+        else:
+            response = make_response( {"error": "could not delete apartment"}, 404) 
+
 
         return response
 
@@ -102,6 +134,7 @@ api.add_resource(ApartmentByID, '/apartments/<int:id>')
 class Tenants(Resource):
 
     def get(self):
+
         response_dict_list = [t.to_dict() for t in Tenant.query.all()]
 
         response = make_response(response_dict_list, 200)
@@ -113,20 +146,23 @@ class Tenants(Resource):
     # potential solution: restart postman  
     def post(self):
         
-        new_tenant = Tenant(
-            name = request.form['name'], 
-            age = request.form['age'],
-        )
+        try:
+            new_tenant = Tenant(
+                name = request.form['name'], 
+                age = request.form['age'],
+            )
 
-        # new_lease = Lease(rent = request.form['rent'], tenant_id = request.form['tenant_id'], apartment_id = request.form['apartment_id'],)
+            db.session.add(new_tenant)
+            db.session.commit()
 
-        db.session.add(new_tenant)
-        db.session.commit()
+            response_dict = new_tenant.to_dict()
 
-        response_dict = new_tenant.to_dict()
+            # successful creation 201
+            response = make_response(response_dict, 201)
 
-        # successful creation 201
-        response = make_response(response_dict, 201)
+        except:
+            db.session.rollback()
+            response = make_response({"error": "username required and age must be greater than or equal to 18"}, 400)
 
         return response
 
