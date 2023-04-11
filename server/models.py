@@ -29,6 +29,12 @@ class Tenant(db.Model, SerializerMixin):
 
     leases = db.relationship("Lease", backref="tenant")
 
+    @validates('name')
+    def validates_name_input(self, key, name_input):
+        if name_input == "":
+            raise ValueError("Input required")
+        return name_input
+
 class Lease(db.Model, SerializerMixin):
     __tablename__ = 'leases'
 
