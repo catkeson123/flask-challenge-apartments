@@ -97,6 +97,119 @@ class ApartmentByID(Resource):
 
 api.add_resource(ApartmentByID, '/apartments/<int:id>')
 
+### tenants ###
+
+class Tenants(Resource):
+
+    def get(self):
+        response_dict_list = [t.to_dict() for t in Tenant.query.all()]
+
+        response = make_response(response_dict_list, 200)
+
+        return response
+
+    # circle back to this to fix 
+    # potential solution: LAG / add an s and run it, and then remove s 
+    # potential solution: restart postman  
+    def post(self):
+        
+        new_tenant = Tenant(
+            name = request.form['name'], 
+            age = request.form['age'],
+        )
+
+        # new_lease = Lease(rent = request.form['rent'], tenant_id = request.form['tenant_id'], apartment_id = request.form['apartment_id'],)
+
+        db.session.add(new_tenant)
+        db.session.commit()
+
+        response_dict = new_tenant.to_dict()
+
+        # successful creation 201
+        response = make_response(response_dict, 201)
+
+        return response
+
+api.add_resource(Tenants, '/tenants')
+
+class TenantByID(Resource):
+
+    def get(self, id):
+        response_dict = Tenant.query.filter_by(id = id).first().to_dict()
+
+        response = make_response(response_dict, 200)
+
+        return response
+
+    # circle back to this to fix 
+    # potential solution: LAG / add an s and run it, and then remove s 
+    # potential solution: restart postman  
+    def patch(self, id):
+        tenant = Tenant.query.filter(Tenant.id == id).first()
+
+        for attr in request.form:
+            setattr(tenant, attr, request.form[attr])
+        
+        db.session.add(tenant)
+        db.session.commit()
+
+        response_dict = tenant.to_dict()
+
+        response = make_response(response_dict, 200)
+
+        return response
+
+    def delete(self, id):
+        
+        tenant = Tenant.query.filter_by(id = id).first()
+
+        db.session.delete(tenant)
+        db.session.commit()
+
+        response_dict = {"message": "Tenant successfully deleted"}
+
+        response = make_response(response_dict, 200)
+
+        return response
+
+api.add_resource(TenantByID, '/tenants/<int:id>')
+
+### leases ###
+
+class Leases(Resource):
+
+     def post(self):
+        
+        new_lease = Lease(rent = request.form['rent'], tenant_id = request.form['tenant_id'], apartment_id = request.form['apartment_id'],)
+
+        db.session.add(new_lease)
+        db.session.commit()
+
+        response_dict = new_lease.to_dict()
+
+        response = make_response(response_dict, 201)
+
+        return response
+
+api.add_resource(Leases, '/leases')
+
+class LeaseByID (Resource):
+
+    def delete(self, id):
+            
+        lease = Lease.query.filter_by(id = id).first()
+
+        db.session.delete(lease)
+        db.session.commit()
+
+        response_dict = {"message": "Lease successfully deleted"}
+
+        response = make_response(response_dict, 200)
+
+        return response
+
+api.add_resource(LeaseByID, '/leases/<int:id>')
+
 
 if __name__ == '__main__':
     app.run(port=3000, debug=True)
